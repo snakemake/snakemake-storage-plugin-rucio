@@ -9,6 +9,7 @@ description = "A Snakemake storage plugin that handles files available through R
 authors = [
     { name = "Bouwe Andela", email = "b.andela@esciencecenter.nl" },
     { name = "Valentin Pestel", email = "valentinpestel@gmail.com" },
+    { name = "Dmitry Kalinkin", email = "dmitry.kalinkin+snakemake@gmail.com" },
 ]
 readme = "README.md"
 license = { text = "Apache-2.0" }
