@@ -19,7 +19,7 @@ authors:
     affiliation: Laboratoire de Physique Corpusculaire de Caen
     email: valentinpestel@gmail.com
 repository-code: >-
-  https://github.com/bouweandela/snakemake-storage-plugin-rucio
+  https://github.com/snakemake/snakemake-storage-plugin-rucio
 url: >-
   https://snakemake.github.io/snakemake-plugin-catalog/plugins/storage/rucio.html
 abstract: >-

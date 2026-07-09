@@ -35,7 +35,7 @@ dev = [
 ]
 
 [project.urls]
-repository = "https://github.com/bouweandela/snakemake-storage-plugin-rucio"
+repository = "https://github.com/snakemake/snakemake-storage-plugin-rucio"
 documentation = "https://snakemake.github.io/snakemake-plugin-catalog/plugins/storage/rucio.html"
 
 [tool.coverage.run]
