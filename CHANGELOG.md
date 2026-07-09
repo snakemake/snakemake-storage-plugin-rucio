@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/snakemake/snakemake-storage-plugin-rucio/compare/v0.5.2...v0.5.3) (2026-07-09)
+
+
+### Documentation
+
+* update Zenodo badge ([#9](https://github.com/snakemake/snakemake-storage-plugin-rucio/issues/9)) ([d6937a4](https://github.com/snakemake/snakemake-storage-plugin-rucio/commit/d6937a42ab48dee0b5e60d6b388f98fa7556500d))
+
 ## [0.5.2](https://github.com/snakemake/snakemake-storage-plugin-rucio/compare/v0.5.1...v0.5.2) (2026-07-09)
 
 
