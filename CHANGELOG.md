@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/snakemake/snakemake-storage-plugin-rucio/compare/v0.5.3...v0.6.0) (2026-07-24)
+
+
+### Features
+
+* rewrite forbidden characters in paths ([3d39e84](https://github.com/snakemake/snakemake-storage-plugin-rucio/commit/3d39e84b19ca329dc5301a2a88c465659aa30976))
+
 ## [0.5.3](https://github.com/snakemake/snakemake-storage-plugin-rucio/compare/v0.5.2...v0.5.3) (2026-07-09)
 
 
