@@ -8,7 +8,9 @@ import hashlib
 import inspect
 import random
 import re
+import tempfile
 from collections.abc import Iterable, Sequence
+from pathlib import Path
 from urllib.parse import urlparse
 
 import rucio.client
@@ -32,6 +34,8 @@ from snakemake_interface_storage_plugins.storage_provider import (
     StorageProviderBase,
     StorageQueryValidationResult,
 )
+
+from . import rucio_quote
 
 # Optional:
 # Define settings for your storage plugin (e.g. host url, credentials).
@@ -124,6 +128,16 @@ StorageProviderSettings = dataclasses.make_dataclass(
                 },
             ),
         ),
+        (
+            "no_path_rewriting",
+            bool,
+            dataclasses.field(
+                default=False,
+                metadata={
+                    "help": "If true, rewrite UNIX-style paths to Rucio-compatible DIDs using path quoting (e.g. slashes become encoded). Set to false if your DID names already match the query exactly.",
+                },
+            ),
+        ),
     ],
     bases=(StorageProviderSettingsBase,),
 )
@@ -210,9 +224,9 @@ class StorageProvider(StorageProviderBase):
             # - rucio:/scope/file
             # - /scope/file
             # - scope/file
-            path_elements = [p for p in parsed.path.strip("/").split("/") if p]
-            if (bool(parsed.netloc) and len(path_elements) == 1) or (
-                not parsed.netloc and len(path_elements) == 2  # noqa: PLR2004
+            path_elements = [p for p in parsed.path.lstrip("/").split("/") if p]
+            if (parsed.netloc and len(path_elements) >= 1) or (
+                not parsed.netloc and len(path_elements) >= 2  # noqa: PLR2004
             ):
                 return StorageQueryValidationResult(
                     query=query,
@@ -254,9 +268,17 @@ class StorageObject(StorageObjectRead, StorageObjectWrite, StorageObjectGlob):
             path_elements = parsed.path.lstrip("/").split("/")
             if parsed.netloc:
                 self.scope = parsed.netloc
-                self.file = path_elements[0]
+                self.orig_file = parsed.path
+                raw_file = parsed.path.lstrip("/")
             else:
-                self.scope, self.file = path_elements
+                self.scope = path_elements[0]
+                self.orig_file = "/".join(path_elements[1:])
+                raw_file = self.orig_file
+            # Optionally use rucio_quote to map UNIX path onto a Rucio DID.
+            if not self.provider.settings.no_path_rewriting:
+                self.file = rucio_quote.encode(raw_file)
+            else:
+                self.file = raw_file
         else:
             # When retrieve=False, the query is set to a URL and there is no
             # way to extract the scope and file from it.
@@ -348,7 +370,7 @@ class StorageObject(StorageObjectRead, StorageObjectWrite, StorageObjectGlob):
 
     def local_suffix(self) -> str:
         """Return a unique suffix for the local path, determined from self.query."""
-        return f"{self.scope}/{self.file}"
+        return f"{self.scope}/{self.orig_file}"
 
     def cleanup(self) -> None:
         """Perform local cleanup of any remainders of the storage object."""
@@ -398,18 +420,25 @@ class StorageObject(StorageObjectRead, StorageObjectWrite, StorageObjectGlob):
     @retry_decorator
     def retrieve_object(self) -> None:
         """Download the file to self.local_path()."""
-        self.provider.dclient.download_dids(
-            [
-                {
-                    "base_dir": self.local_path().parent,
-                    "did": f"{self.scope}:{self.file}",
-                    "ignore_checksum": self.provider.settings.ignore_checksum,
-                    "no_subdir": True,
-                    "rse": self.provider.settings.download_rse,
-                },
-            ],
-            num_threads=1,
-        )
+        # Workaround downloadclient's inability to accept custom destination
+        # filename by downloading to a temporary directory first and then
+        # moving the file to its final destination
+        base_dir = self.local_path().parent
+        base_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=".download_", dir=base_dir) as temp_dir:
+            self.provider.dclient.download_dids(
+                [
+                    {
+                        "base_dir": temp_dir,
+                        "did": f"{self.scope}:{self.file}",
+                        "ignore_checksum": self.provider.settings.ignore_checksum,
+                        "rse": self.provider.settings.download_rse,
+                    },
+                ],
+                num_threads=1,
+            )
+
+            Path(temp_dir, self.scope, self.file).replace(self.local_path())
 
     def store_object(self) -> None:
         """Upload the file."""
