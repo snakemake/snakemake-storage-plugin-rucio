@@ -354,15 +354,19 @@ class StorageObject(StorageObjectRead, StorageObjectWrite, StorageObjectGlob):
     def _handle(self, cache: IOCacheStorageInterface, files: Sequence[str]) -> None:
         """Add a sequence of files to the cache."""
         dids = [{"scope": self.scope, "name": f} for f in files]
-        for file, meta in zip(
-            files,
-            self.client.get_metadata_bulk(dids, plugin="DID_COLUMN"),
-            strict=True,
-        ):
+        metadata = {
+            meta["name"]: meta
+            for meta in self.client.get_metadata_bulk(dids, plugin="DID_COLUMN")
+        }
+        for file in files:
             key = self.cache_key(f"{self.scope}/{file}")
-            cache.mtime[key] = Mtime(storage=meta["updated_at"].timestamp())
-            cache.size[key] = meta["bytes"]
-            cache.exists_in_storage[key] = True
+            if file in metadata:
+                meta = metadata[file]
+                cache.mtime[key] = Mtime(storage=meta["updated_at"].timestamp())
+                cache.size[key] = meta["bytes"]
+                cache.exists_in_storage[key] = True
+            else:
+                cache.exists_in_storage[key] = False
 
     def get_inventory_parent(self) -> str:
         """Return the parent directory of this object."""
