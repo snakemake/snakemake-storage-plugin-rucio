@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+from argparse import ArgumentParser
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from snakemake_interface_storage_plugins.registry import StoragePluginRegistry
 from snakemake_interface_storage_plugins.settings import StorageProviderSettingsBase
 from snakemake_interface_storage_plugins.storage_provider import (
     StorageProviderBase,
@@ -337,3 +339,24 @@ class TestStorageWriteWithPathRewrite(TestStorageRucioBase):
             tmp_path, query=f"rucio://{scope}/path/normally/not/allowed"
         )
         assert obj.exists()
+
+
+def test_settings_timeout_is_int() -> None:
+    """Test that a CLI timeout string is cast to int before reaching the client.
+
+    Snakemake parses ``--storage-rucio-timeout`` as a string. If it is not cast
+    back to the ``Optional[int]`` annotation of the Rucio client, every request
+    fails with ``ValueError: Timeout value connect was 600, but it must be an
+    int, float or None.``
+
+    The test goes through the storage plugin registry, i.e. the same path
+    snakemake takes when parsing its command line.
+    """
+    registry = StoragePluginRegistry()
+    plugin = registry.get_plugin("rucio")
+    parser = ArgumentParser()
+    plugin.register_cli_args(parser, registry.get_plugin_type())
+    args = parser.parse_args(["--storage-rucio-timeout", "600"])
+    settings = plugin.get_settings(args)
+
+    assert settings.get_settings(None).timeout == 600
