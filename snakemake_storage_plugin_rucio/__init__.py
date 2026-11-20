@@ -9,6 +9,7 @@ import inspect
 import random
 import re
 import tempfile
+import typing
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from urllib.parse import urlparse
@@ -71,7 +72,13 @@ StorageProviderSettings = dataclasses.make_dataclass(
             f.annotation,
             dataclasses.field(
                 default=f.default,
-                metadata={"help": _get_help(f.name)},
+                metadata={
+                    "help": _get_help(f.name),
+                    # Snakemake passes the settings as strings and, before
+                    # snakemake-interface-common 1.23.1, only casts them back
+                    # to plain types, so unwrap Optional[X] here.
+                    "type": typing.get_args(f.annotation)[0],
+                },
             ),
         )
         for f in inspect.signature(_RUCIO_CLIENT_CLS).parameters.values()
